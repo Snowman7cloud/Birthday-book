@@ -176,8 +176,8 @@ const SUPABASE_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSI
 const sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
 let currentUser=null,peopleCache=[],datesCache=[],giftsCache=[],currentSort='name',currentPersonId=null,authMode='login';
 
-sb.auth.onAuthStateChange(async(event,session)=>{if(session?.user){currentUser=session.user;await loadAllData();showApp()}else if(event==='SIGNED_OUT'){currentUser=null;peopleCache=[];datesCache=[];giftsCache=[];showAuth()}});
-async function checkSession(){try{const{data:{session}}=await sb.auth.getSession();if(session){currentUser=session.user;await loadAllData();showApp()}else showAuth()}catch(e){showAuth()}}
+sb.auth.onAuthStateChange(async(event,session)=>{try{if(session?.user){currentUser=session.user;await loadAllData();showApp()}else if(event==='SIGNED_OUT'){currentUser=null;peopleCache=[];datesCache=[];giftsCache=[];showAuth()}}catch(e){console.error('Auth state error:',e);showAuth()}});
+async function checkSession(){try{const{data:{session}}=await sb.auth.getSession();if(session){currentUser=session.user;await loadAllData();showApp()}else showAuth()}catch(e){console.error('Session check error:',e);showAuth()}}
 function showAuth(){document.getElementById('loading-overlay').classList.add('hidden');document.getElementById('auth-screen').style.display='flex';document.getElementById('app-container').style.display='none'}
 function showApp(){document.getElementById('loading-overlay').classList.add('hidden');document.getElementById('auth-screen').style.display='none';document.getElementById('app-container').style.display='block';renderDashboard();document.getElementById('fab-add').style.display='none'}
 function toggleAuthMode(){authMode=authMode==='login'?'signup':'login';document.getElementById('auth-sub').textContent=authMode==='login'?'Sign in to access your data':'Create a new account';document.getElementById('auth-submit').textContent=authMode==='login'?'Sign In':'Create Account';document.getElementById('auth-toggle').innerHTML=authMode==='login'?'Don\'t have an account? <a onclick="toggleAuthMode()">Sign up</a>':'Already have an account? <a onclick="toggleAuthMode()">Sign in</a>';document.getElementById('auth-error').style.display='none'}
@@ -403,7 +403,8 @@ async function clearAllData(){
   peopleCache=[];datesCache=[];giftsCache=[];toast('All data deleted');renderDashboard();renderPeople()
 }
 
-applyTheme();checkSession()
+applyTheme();checkSession();
+setTimeout(()=>{const lo=document.getElementById('loading-overlay');if(!lo.classList.contains('hidden')){console.warn('Session check timed out, showing auth');showAuth()}},5000)
 </script>
 </body>
 </html>
