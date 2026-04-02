@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#1a1a2e">
+<title>Birthday Book</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"><\/script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#faf8f5;--bg-card:#fff;--bg-card-alt:#f5f0eb;--text:#1a1a2e;--text-secondary:#6b6880;--text-muted:#9e9bab;--accent:#c4653a;--accent-soft:#f5e6df;--accent2:#3a7c6a;--accent2-soft:#dff0eb;--accent3:#8b6cc1;--accent3-soft:#ede6f7;--border:#e8e4de;--shadow:0 2px 12px rgba(26,26,46,.06);--shadow-lg:0 8px 32px rgba(26,26,46,.1);--radius:16px;--radius-sm:10px;--celebrate:#e8a838;--danger:#c44a4a;--danger-soft:#fce8e8;--font-display:'DM Serif Display',Georgia,serif;--font-body:'DM Sans',-apple-system,sans-serif}
+[data-theme="dark"]{--bg:#141420;--bg-card:#1e1e30;--bg-card-alt:#262640;--text:#e8e6f0;--text-secondary:#a09cb0;--text-muted:#6b6880;--accent:#e07a50;--accent-soft:#2e2018;--accent2:#50b89a;--accent2-soft:#162820;--accent3:#a88adb;--accent3-soft:#221e30;--border:#2e2e48;--shadow:0 2px 12px rgba(0,0,0,.2);--shadow-lg:0 8px 32px rgba(0,0,0,.3);--celebrate:#e8a838;--danger:#e06060;--danger-soft:#2e1818}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:var(--font-body);background:var(--bg);color:var(--text);min-height:100dvh;overflow-x:hidden;-webkit-tap-highlight-color:transparent}
+.auth-screen{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100dvh;padding:24px}
+.auth-box{width:100%;max-width:380px}
+.auth-logo{font-family:var(--font-display);font-size:36px;text-align:center;margin-bottom:8px}
+.auth-sub{text-align:center;color:var(--text-secondary);font-size:15px;margin-bottom:32px}
+.auth-error{background:var(--danger-soft);color:var(--danger);padding:10px 14px;border-radius:var(--radius-sm);font-size:13px;margin-bottom:14px;display:none}
+.auth-toggle{text-align:center;margin-top:20px;font-size:14px;color:var(--text-secondary)}
+.auth-toggle a{color:var(--accent);font-weight:600;cursor:pointer;text-decoration:none}
+.loading-overlay{position:fixed;inset:0;background:var(--bg);display:flex;align-items:center;justify-content:center;z-index:999;flex-direction:column;gap:16px}
+.loading-overlay.hidden{display:none}
+.spinner{width:36px;height:36px;border:3px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.bottom-nav{position:fixed;bottom:0;left:0;right:0;background:var(--bg-card);border-top:1px solid var(--border);display:flex;justify-content:space-around;padding:8px 0 env(safe-area-inset-bottom,8px);z-index:100}
+.nav-btn{display:flex;flex-direction:column;align-items:center;gap:3px;background:none;border:none;color:var(--text-muted);font-family:var(--font-body);font-size:10px;font-weight:600;padding:6px 12px;cursor:pointer;transition:color .2s;letter-spacing:.03em}
+.nav-btn.active{color:var(--accent)}.nav-btn svg{width:24px;height:24px}
+.screen{display:none;padding:20px 16px 100px;max-width:500px;margin:0 auto;animation:fadeIn .25s ease}
+.screen.active{display:block}
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+.dash-date{font-family:var(--font-display);font-size:28px;margin-bottom:4px}
+.dash-weekday{font-size:14px;color:var(--text-secondary);margin-bottom:24px;font-weight:500}
+.celebration-banner{background:linear-gradient(135deg,var(--celebrate),#e0783a);color:#fff;padding:18px 20px;border-radius:var(--radius);margin-bottom:20px;cursor:pointer}
+.celebration-banner h3{font-family:var(--font-display);font-size:22px}
+.celebration-banner p{font-size:14px;opacity:.9;margin-top:4px}
+.section-title{font-family:var(--font-display);font-size:20px;margin:28px 0 14px}
+.section-title:first-of-type{margin-top:0}
+.upcoming-card{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);padding:16px;margin-bottom:10px;display:flex;align-items:center;gap:14px;cursor:pointer;transition:box-shadow .2s,transform .15s;box-shadow:var(--shadow)}
+.upcoming-card:hover{box-shadow:var(--shadow-lg);transform:translateY(-1px)}
+.upcoming-card.warn-7{border-left:4px solid var(--celebrate)}
+.uc-countdown{min-width:52px;text-align:center}
+.uc-countdown .days{font-family:var(--font-display);font-size:26px;color:var(--accent);line-height:1}
+.uc-countdown .label{font-size:10px;color:var(--text-muted);font-weight:600;text-transform:uppercase;letter-spacing:.05em}
+.uc-info{flex:1}.uc-info .name{font-weight:700;font-size:16px}
+.uc-info .detail{font-size:13px;color:var(--text-secondary);margin-top:2px}
+.uc-type-badge{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;padding:3px 8px;border-radius:6px;white-space:nowrap}
+.badge-birthday{background:var(--accent-soft);color:var(--accent)}
+.badge-anniversary{background:var(--accent2-soft);color:var(--accent2)}
+.badge-custom{background:var(--accent3-soft);color:var(--accent3)}
+.empty-state{text-align:center;padding:60px 20px;color:var(--text-muted)}
+.empty-state svg{width:64px;height:64px;margin-bottom:16px;opacity:.4}
+.empty-state p{font-size:15px}
+.search-bar{display:flex;align-items:center;gap:10px;background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);padding:10px 14px;margin-bottom:16px}
+.search-bar input{flex:1;border:none;background:none;font-family:var(--font-body);font-size:15px;color:var(--text);outline:none}
+.search-bar input::placeholder{color:var(--text-muted)}
+.search-bar svg{width:20px;height:20px;color:var(--text-muted);flex-shrink:0}
+.sort-row{display:flex;gap:8px;margin-bottom:16px}
+.sort-btn{font-family:var(--font-body);font-size:12px;font-weight:600;padding:6px 14px;border-radius:20px;border:1px solid var(--border);background:var(--bg-card);color:var(--text-secondary);cursor:pointer;transition:all .2s}
+.sort-btn.active{background:var(--accent);color:#fff;border-color:var(--accent)}
+.person-card{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);padding:16px;margin-bottom:10px;display:flex;align-items:center;gap:14px;cursor:pointer;transition:box-shadow .2s;box-shadow:var(--shadow)}
+.person-card:hover{box-shadow:var(--shadow-lg)}
+.person-avatar{width:48px;height:48px;border-radius:50%;background:var(--accent-soft);color:var(--accent);display:flex;align-items:center;justify-content:center;font-family:var(--font-display);font-size:20px;flex-shrink:0;overflow:hidden}
+.person-avatar img{width:100%;height:100%;object-fit:cover}
+.person-card .info{flex:1}.person-card .info .name{font-weight:700;font-size:16px}
+.person-card .info .sub{font-size:13px;color:var(--text-secondary);margin-top:2px}
+.fab{position:fixed;bottom:80px;right:20px;width:56px;height:56px;border-radius:50%;background:var(--accent);color:#fff;border:none;box-shadow:var(--shadow-lg);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:transform .2s;z-index:50}
+.fab:hover{transform:scale(1.08)}.fab svg{width:28px;height:28px}
+.profile-header{text-align:center;margin-bottom:28px}
+.profile-avatar{width:80px;height:80px;border-radius:50%;background:var(--accent-soft);color:var(--accent);display:flex;align-items:center;justify-content:center;font-family:var(--font-display);font-size:36px;margin:0 auto 12px;overflow:hidden;cursor:pointer;position:relative}
+.profile-avatar img{width:100%;height:100%;object-fit:cover}
+.profile-avatar:hover::after{content:'📷';position:absolute;inset:0;background:rgba(0,0,0,.4);display:flex;align-items:center;justify-content:center;font-size:24px;border-radius:50%}
+.profile-name{font-family:var(--font-display);font-size:26px}
+.profile-age{font-size:14px;color:var(--text-secondary);margin-top:4px}
+.card-section{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);padding:18px;margin-bottom:14px;box-shadow:var(--shadow)}
+.card-section-title{font-family:var(--font-display);font-size:17px;margin-bottom:12px;display:flex;align-items:center;justify-content:space-between}
+.card-section-title button{background:none;border:none;color:var(--accent);font-family:var(--font-body);font-weight:600;font-size:13px;cursor:pointer}
+.form-group{margin-bottom:16px}
+.form-group label{display:block;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-secondary);margin-bottom:6px}
+.form-group input,.form-group textarea,.form-group select{width:100%;padding:12px 14px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--bg);color:var(--text);font-family:var(--font-body);font-size:15px;outline:none;transition:border-color .2s}
+.form-group input:focus,.form-group textarea:focus{border-color:var(--accent)}
+.form-group textarea{resize:vertical;min-height:80px}
+.tags-wrap{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+.tag{display:inline-flex;align-items:center;gap:6px;background:var(--bg-card-alt);border:1px solid var(--border);padding:6px 12px;border-radius:20px;font-size:13px;font-weight:500}
+.tag .remove-tag{background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:16px;line-height:1;padding:0 0 0 2px}
+.tag-input-row{display:flex;gap:8px;margin-top:8px}
+.tag-input-row input{flex:1}
+.tag-input-row button{padding:10px 18px;background:var(--accent);color:#fff;border:none;border-radius:var(--radius-sm);font-family:var(--font-body);font-weight:600;font-size:14px;cursor:pointer}
+.date-item{display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border)}
+.date-item:last-child{border-bottom:none}
+.date-item .di-info .di-label{font-weight:600;font-size:14px}
+.date-item .di-info .di-date{font-size:13px;color:var(--text-secondary)}
+.date-item .di-actions button{background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:18px}
+.gift-item{display:flex;justify-content:space-between;align-items:flex-start;padding:10px 0;border-bottom:1px solid var(--border)}
+.gift-item:last-child{border-bottom:none}
+.gift-item .gi-name{font-weight:600;font-size:14px}
+.gift-item .gi-detail{font-size:12px;color:var(--text-secondary)}
+.gift-item .gi-actions button{background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:16px}
+.suggestion-chips{display:flex;flex-wrap:wrap;gap:8px}
+.suggestion-chip{background:var(--accent2-soft);color:var(--accent2);padding:8px 14px;border-radius:20px;font-size:13px;font-weight:600}
+.btn-primary{width:100%;padding:14px;background:var(--accent);color:#fff;border:none;border-radius:var(--radius-sm);font-family:var(--font-body);font-weight:700;font-size:16px;cursor:pointer;transition:opacity .2s}
+.btn-primary:hover{opacity:.9}.btn-primary:disabled{opacity:.5;cursor:not-allowed}
+.btn-secondary{width:100%;padding:14px;background:var(--bg-card-alt);color:var(--text);border:1px solid var(--border);border-radius:var(--radius-sm);font-family:var(--font-body);font-weight:700;font-size:16px;cursor:pointer}
+.btn-danger{width:100%;padding:14px;background:var(--danger-soft);color:var(--danger);border:1px solid var(--danger);border-radius:var(--radius-sm);font-family:var(--font-body);font-weight:700;font-size:16px;cursor:pointer}
+.back-btn{display:inline-flex;align-items:center;gap:6px;background:none;border:none;color:var(--accent);font-family:var(--font-body);font-weight:600;font-size:14px;cursor:pointer;margin-bottom:16px}
+.profile-actions{display:flex;gap:10px;margin-top:16px;margin-bottom:8px}
+.profile-actions button{flex:1;padding:10px;border-radius:var(--radius-sm);border:1px solid var(--border);background:var(--bg-card);color:var(--text);font-family:var(--font-body);font-weight:600;font-size:13px;cursor:pointer;transition:all .2s}
+.profile-actions button:hover{border-color:var(--accent);color:var(--accent)}
+.setting-item{display:flex;align-items:center;justify-content:space-between;padding:16px 0;border-bottom:1px solid var(--border)}
+.setting-item:last-child{border-bottom:none}
+.setting-item .si-text .si-title{font-weight:600;font-size:15px}
+.setting-item .si-text .si-desc{font-size:13px;color:var(--text-secondary);margin-top:2px}
+.toggle{position:relative;width:48px;height:28px;background:var(--border);border-radius:14px;cursor:pointer;border:none;transition:background .3s}
+.toggle.on{background:var(--accent)}
+.toggle::after{content:'';position:absolute;top:3px;left:3px;width:22px;height:22px;background:#fff;border-radius:50%;transition:transform .3s}
+.toggle.on::after{transform:translateX(20px)}
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:200;align-items:flex-end;justify-content:center;animation:fadeIn .2s}
+.modal-overlay.active{display:flex}
+.modal{background:var(--bg-card);border-radius:var(--radius) var(--radius) 0 0;padding:24px 20px env(safe-area-inset-bottom,20px);width:100%;max-width:500px;max-height:85dvh;overflow-y:auto;animation:slideUp .3s ease}
+@keyframes slideUp{from{transform:translateY(100%)}to{transform:none}}
+.modal h3{font-family:var(--font-display);font-size:22px;margin-bottom:20px}
+.toast{position:fixed;bottom:90px;left:50%;transform:translateX(-50%) translateY(100px);background:var(--text);color:var(--bg);padding:12px 24px;border-radius:30px;font-size:14px;font-weight:600;z-index:300;opacity:0;transition:all .3s;pointer-events:none;white-space:nowrap}
+.toast.show{transform:translateX(-50%) translateY(0);opacity:1}
+.anni-suggestions{margin-top:12px}
+.anni-suggest-label{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);margin-bottom:8px}
+</style>
+</head>
+<body>
+<div class="loading-overlay" id="loading-overlay"><div class="spinner"></div><span style="font-size:14px;color:var(--text-muted)">Loading...</span></div>
+<div class="toast" id="toast"></div>
+<div class="auth-screen" id="auth-screen" style="display:none">
+  <div class="auth-box">
+    <div class="auth-logo">Birthday Book</div>
+    <div class="auth-sub" id="auth-sub">Sign in to access your data</div>
+    <div class="auth-error" id="auth-error"></div>
+    <div class="form-group"><label>Email</label><input type="email" id="auth-email" placeholder="you@email.com"></div>
+    <div class="form-group"><label>Password</label><input type="password" id="auth-password" placeholder="Your password"></div>
+    <button class="btn-primary" id="auth-submit" onclick="handleAuth()">Sign In</button>
+    <div class="auth-toggle" id="auth-toggle">Don't have an account? <a onclick="toggleAuthMode()">Sign up</a></div>
+  </div>
+</div>
+<div id="app-container" style="display:none">
+  <div class="screen active" id="screen-dashboard"><div id="dash-content"></div></div>
+  <div class="screen" id="screen-people">
+    <h2 style="font-family:var(--font-display);font-size:26px;margin-bottom:16px">Everyone</h2>
+    <div class="search-bar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg><input type="text" id="search-input" placeholder="Search people..."></div>
+    <div class="sort-row"><button class="sort-btn active" data-sort="name">By Name</button><button class="sort-btn" data-sort="upcoming">By Next Date</button></div>
+    <div id="people-list"></div>
+    <button class="fab" id="fab-add" title="Add person"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg></button>
+  </div>
+  <div class="screen" id="screen-profile"><button class="back-btn" id="back-from-profile">&#8592; Back</button><div id="profile-content"></div></div>
+  <div class="screen" id="screen-settings">
+    <h2 style="font-family:var(--font-display);font-size:26px;margin-bottom:20px">Settings</h2>
+    <div class="card-section">
+      <div class="setting-item"><div class="si-text"><div class="si-title">Dark Mode</div><div class="si-desc">Switch between light and dark</div></div><button class="toggle" id="theme-toggle"></button></div>
+      <div class="setting-item"><div class="si-text"><div class="si-title">Export Data</div><div class="si-desc">Download a JSON backup</div></div><button class="btn-secondary" style="width:auto;padding:8px 18px;font-size:13px" onclick="exportData()">Export</button></div>
+      <div class="setting-item"><div class="si-text"><div class="si-title">Import Data</div><div class="si-desc">Restore from a backup file</div></div><button class="btn-secondary" style="width:auto;padding:8px 18px;font-size:13px" onclick="document.getElementById('import-file').click()">Import</button><input type="file" id="import-file" accept=".json" style="display:none" onchange="importData(event)"></div>
+      <div class="setting-item"><div class="si-text"><div class="si-title">Sign Out</div><div class="si-desc">Log out of your account</div></div><button class="btn-secondary" style="width:auto;padding:8px 18px;font-size:13px" onclick="signOut()">Sign Out</button></div>
+      <div class="setting-item"><div class="si-text"><div class="si-title" style="color:var(--danger)">Delete All Data</div><div class="si-desc">Permanently erase everything</div></div><button class="btn-danger" style="width:auto;padding:8px 18px;font-size:13px" onclick="clearAllData()">Delete</button></div>
+    </div>
+    <p style="text-align:center;font-size:12px;color:var(--text-muted);margin-top:24px">Birthday Book v2.0</p>
+  </div>
+  <div class="bottom-nav">
+    <button class="nav-btn active" data-screen="dashboard"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>Home</button>
+    <button class="nav-btn" data-screen="people"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4-4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>People</button>
+    <button class="nav-btn" data-screen="settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.32 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>Settings</button>
+  </div>
+</div>
+<div class="modal-overlay" id="modal-overlay"><div class="modal" id="modal-content"></div></div>
+<script>
+const SUPABASE_URL='https://nfhbrfynldtxymistidb.supabase.co';
+const SUPABASE_KEY='sb_publishable_5KBJoevh5TwPJoq5nx9E9A_c7Qa25O3';
+const sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
+let currentUser=null,peopleCache=[],datesCache=[],giftsCache=[],currentSort='name',currentPersonId=null,authMode='login';
+
+async function checkSession(){try{const{data:{session}}=await sb.auth.getSession();if(session){currentUser=session.user;await loadAllData();showApp()}else showAuth()}catch(e){showAuth()}}
+function showAuth(){document.getElementById('loading-overlay').classList.add('hidden');document.getElementById('auth-screen').style.display='flex';document.getElementById('app-container').style.display='none'}
+function showApp(){document.getElementById('loading-overlay').classList.add('hidden');document.getElementById('auth-screen').style.display='none';document.getElementById('app-container').style.display='block';renderDashboard();document.getElementById('fab-add').style.display='none'}
+function toggleAuthMode(){authMode=authMode==='login'?'signup':'login';document.getElementById('auth-sub').textContent=authMode==='login'?'Sign in to access your data':'Create a new account';document.getElementById('auth-submit').textContent=authMode==='login'?'Sign In':'Create Account';document.getElementById('auth-toggle').innerHTML=authMode==='login'?'Don\'t have an account? <a onclick="toggleAuthMode()">Sign up</a>':'Already have an account? <a onclick="toggleAuthMode()">Sign in</a>';document.getElementById('auth-error').style.display='none'}
+
+async function handleAuth(){
+  const email=document.getElementById('auth-email').value.trim(),password=document.getElementById('auth-password').value,errEl=document.getElementById('auth-error'),btn=document.getElementById('auth-submit');
+  if(!email||!password){errEl.textContent='Please fill in all fields';errEl.style.display='block';return}
+  if(password.length<6){errEl.textContent='Password must be at least 6 characters';errEl.style.display='block';return}
+  btn.disabled=true;btn.textContent='Loading...';errEl.style.display='none';
+  try{
+    const result=authMode==='login'?await sb.auth.signInWithPassword({email,password}):await sb.auth.signUp({email,password});
+    if(result.error){errEl.textContent=result.error.message;errEl.style.display='block';btn.disabled=false;btn.textContent=authMode==='login'?'Sign In':'Create Account';return}
+    if(authMode==='signup'&&result.data.user&&!result.data.session){errEl.textContent='Check your email for a confirmation link, then sign in.';errEl.style.display='block';errEl.style.background='var(--accent2-soft)';errEl.style.color='var(--accent2)';btn.disabled=false;btn.textContent='Create Account';return}
+    currentUser=result.data.user;await loadAllData();showApp()
+  }catch(e){errEl.textContent='Connection error. Please try again.';errEl.style.display='block';btn.disabled=false;btn.textContent=authMode==='login'?'Sign In':'Create Account'}
+}
+async function signOut(){await sb.auth.signOut();currentUser=null;peopleCache=[];datesCache=[];giftsCache=[];showAuth()}
+document.getElementById('auth-password').addEventListener('keydown',e=>{if(e.key==='Enter')handleAuth()});
+document.getElementById('auth-email').addEventListener('keydown',e=>{if(e.key==='Enter')document.getElementById('auth-password').focus()});
+
+async function loadAllData(){
+  const[pRes,dRes,gRes]=await Promise.all([sb.from('people').select('*').eq('user_id',currentUser.id).order('name'),sb.from('dates').select('*').eq('user_id',currentUser.id),sb.from('gifts').select('*').eq('user_id',currentUser.id)]);
+  peopleCache=pRes.data||[];datesCache=dRes.data||[];giftsCache=gRes.data||[]
+}
+function getPersonDates(pid){return datesCache.filter(d=>d.person_id===pid)}
+function getPersonGifts(pid){return giftsCache.filter(g=>g.person_id===pid)}
+function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2200)}
+function getAge(ds){const d=new Date(ds+'T00:00:00'),t=new Date();let a=t.getFullYear()-d.getFullYear();const m=t.getMonth()-d.getMonth();if(m<0||(m===0&&t.getDate()<d.getDate()))a--;return a}
+function getNextOccurrence(ds){const d=new Date(ds+'T00:00:00'),t=new Date();t.setHours(0,0,0,0);let n=new Date(t.getFullYear(),d.getMonth(),d.getDate());if(n<t)n.setFullYear(n.getFullYear()+1);return n}
+function daysUntil(ds){const t=new Date();t.setHours(0,0,0,0);return Math.round((getNextOccurrence(ds)-t)/86400000)}
+function formatDate(ds){return new Date(ds+'T00:00:00').toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'})}
+function formatDateShort(ds){return new Date(ds+'T00:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'})}
+function getYearCount(ds){return getNextOccurrence(ds).getFullYear()-new Date(ds+'T00:00:00').getFullYear()}
+function getInitials(n){return n.split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2)}
+function getOrdinal(n){const s=["th","st","nd","rd"],v=n%100;return n+(s[(v-20)%10]||s[v]||s[0])}
+
+const ANNIVERSARY_GIFTS={1:'Paper',2:'Cotton',3:'Leather',4:'Fruit/Flowers',5:'Wood',6:'Candy/Iron',7:'Wool/Copper',8:'Pottery/Bronze',9:'Pottery/Willow',10:'Tin/Aluminum',11:'Steel',12:'Silk/Linen',13:'Lace',14:'Ivory/Gold Jewelry',15:'Crystal',20:'China',25:'Silver',30:'Pearl',35:'Coral',40:'Ruby',45:'Sapphire',50:'Gold',55:'Emerald',60:'Diamond',75:'Diamond/Gold'};
+const GIFT_MAP={'photography':['Camera accessories','Photo book','Lens filters','Tripod','Photography workshop'],'cooking':['Cookbook','Spice set','Kitchen gadgets','Chef knife','Cooking class'],'gaming':['Game gift card','New controller','Gaming headset','Retro console','Game subscription'],'reading':['Book subscription','Kindle','Bookends','Reading light','Rare edition'],'music':['Concert tickets','Vinyl records','Instrument accessories','Music lessons','Bluetooth speaker'],'outdoors':['Hiking gear','National park pass','Water bottle','Trail guide book','Camp lantern'],'fitness':['Gym bag','Fitness tracker','Yoga mat','Resistance bands','Protein supplements'],'art':['Art supplies','Museum membership','Canvas set','Drawing tablet','Art workshop'],'travel':['Luggage tag','Travel journal','Packing cubes','Neck pillow','World scratch map'],'gardening':['Plant starter kit','Garden tools','Seeds collection','Planter pots','Gardening gloves'],'tech':['Smart home device','Wireless charger','USB hub','Portable battery','Cable organizer'],'fashion':['Watch','Scarf','Sunglasses','Wallet','Jewelry'],'sports':['Team jersey','Sports equipment','Tickets to game','Training gear','Sports memoir'],'film':['Streaming gift card','Movie posters','Projector','Film book','Cinema vouchers'],'coffee':['Pour-over set','Coffee subscription','Travel mug','Grinder','Specialty beans'],'wine':['Wine subscription','Decanter','Wine glasses','Corkscrew set','Vineyard tour'],'crafts':['Craft supply kit','Sewing machine','Knitting set','Resin kit','Pattern books'],'pets':['Pet toys','Custom pet portrait','Treat subscription','Pet camera','Grooming kit'],'faith':['Devotional journal','Study Bible','Worship album','Cross necklace','Prayer book'],'cars':['Detailing kit','Car gadgets','Driving experience','Model car','Dash cam'],'writing':['Fountain pen','Leather journal','Desk organizer','Writing workshop','Stationery set'],'cinematography':['Film history book','Director memoir','Criterion Collection','Lens mug','Clapperboard']};
+
+function getSuggestions(pid){
+  const p=peopleCache.find(x=>x.id===pid);if(!p)return[];
+  const suggestions=new Set(),interests=(p.interests||[]).map(i=>i.toLowerCase()),past=getPersonGifts(pid).map(g=>g.name.toLowerCase());
+  interests.forEach(interest=>{Object.keys(GIFT_MAP).forEach(key=>{if(interest.includes(key)||key.includes(interest))GIFT_MAP[key].forEach(g=>{if(!past.some(pg=>pg.includes(g.toLowerCase())))suggestions.add(g)})})});
+  if(suggestions.size===0)['Gift card','Experience voucher','Subscription box','Personalized item','Handwritten letter'].forEach(g=>suggestions.add(g));
+  return[...suggestions].slice(0,10)
+}
+
+function getAllUpcomingDates(){
+  const events=[];
+  peopleCache.forEach(person=>{getPersonDates(person.id).forEach(d=>{events.push({personId:person.id,personName:person.name,photo:person.photo,dateObj:d,daysUntil:daysUntil(d.date),yearCount:getYearCount(d.date),isBirthday:d.type==='birthday',type:d.type})})});
+  events.sort((a,b)=>a.daysUntil-b.daysUntil);return events
+}
+
+function switchScreen(id){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById('screen-'+id).classList.add('active');
+  document.querySelectorAll('.nav-btn').forEach(b=>b.classList.toggle('active',b.dataset.screen===id));
+  if(id==='dashboard')renderDashboard();if(id==='people')renderPeople();
+  document.getElementById('fab-add').style.display=id==='people'?'flex':'none'
+}
+document.querySelectorAll('.nav-btn').forEach(btn=>{btn.addEventListener('click',()=>switchScreen(btn.dataset.screen))});
+
+function renderDashboard(){
+  const c=document.getElementById('dash-content'),today=new Date();
+  const dayName=today.toLocaleDateString('en-US',{weekday:'long'}),dateStr=today.toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'});
+  const events=getAllUpcomingDates(),todayEvents=events.filter(e=>e.daysUntil===0),upcoming=events.filter(e=>e.daysUntil>0).slice(0,5);
+  let h='<div class="dash-date">'+dateStr+'</div><div class="dash-weekday">'+dayName+'</div>';
+  todayEvents.forEach(e=>{const det=e.isBirthday?'Turning '+e.yearCount+' today!':getOrdinal(e.yearCount)+' '+e.dateObj.label;h+='<div class="celebration-banner" onclick="viewPerson(\''+e.personId+'\')"><h3>🎉 '+e.personName+'</h3><p>'+det+'</p></div>'});
+  if(events.length===0){h+='<div class="empty-state"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18M8 14h.01M12 14h.01M16 14h.01M8 18h.01M12 18h.01"/></svg><p>No one added yet.<br>Tap People to get started.</p></div>'}
+  else{
+    h+='<div class="section-title">Coming Up</div>';
+    if(upcoming.length===0&&todayEvents.length===0)h+='<p style="color:var(--text-muted);font-size:14px">No upcoming dates soon.</p>';
+    upcoming.forEach(e=>{
+      const warn=e.daysUntil<=7?'warn-7':'',tc=e.isBirthday?'badge-birthday':(e.type==='anniversary'?'badge-anniversary':'badge-custom'),tl=e.isBirthday?'Birthday':(e.type==='anniversary'?'Anniversary':e.dateObj.label);
+      const det=e.isBirthday?'Turning '+e.yearCount+' on '+formatDateShort(e.dateObj.date):getOrdinal(e.yearCount)+' '+e.dateObj.label+' - '+formatDateShort(e.dateObj.date);
+      h+='<div class="upcoming-card '+warn+'" onclick="viewPerson(\''+e.personId+'\')"><div class="uc-countdown"><div class="days">'+e.daysUntil+'</div><div class="label">'+(e.daysUntil===1?'day':'days')+'</div></div><div class="uc-info"><div class="name">'+e.personName+'</div><div class="detail">'+det+'</div></div><span class="uc-type-badge '+tc+'">'+tl+'</span></div>'
+    })
+  }
+  c.innerHTML=h
+}
+
+function renderPeople(){
+  const c=document.getElementById('people-list');let people=[...peopleCache];
+  const q=document.getElementById('search-input').value.toLowerCase();
+  if(q)people=people.filter(p=>p.name.toLowerCase().includes(q));
+  if(currentSort==='name')people.sort((a,b)=>a.name.localeCompare(b.name));
+  else people.sort((a,b)=>{const ad=getPersonDates(a.id).map(d=>daysUntil(d.date)),bd=getPersonDates(b.id).map(d=>daysUntil(d.date));return(ad.length?Math.min(...ad):999)-(bd.length?Math.min(...bd):999)});
+  if(people.length===0){c.innerHTML='<div class="empty-state"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4-4v2"/><circle cx="9" cy="7" r="4"/></svg><p>'+(q?'No results found.':'No one here yet. Tap + to add someone.')+'</p></div>';return}
+  c.innerHTML=people.map(p=>{
+    const bday=getPersonDates(p.id).find(d=>d.type==='birthday'),sub=bday?getAge(bday.date)+' years old - next in '+daysUntil(bday.date)+' days':'No birthday set';
+    const av=p.photo?'<img src="'+p.photo+'" alt="'+p.name+'">':getInitials(p.name);
+    return'<div class="person-card" onclick="viewPerson(\''+p.id+'\')"><div class="person-avatar">'+av+'</div><div class="info"><div class="name">'+p.name+'</div><div class="sub">'+sub+'</div></div></div>'
+  }).join('')
+}
+document.getElementById('search-input').addEventListener('input',renderPeople);
+document.querySelectorAll('.sort-btn').forEach(btn=>{btn.addEventListener('click',()=>{document.querySelectorAll('.sort-btn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');currentSort=btn.dataset.sort;renderPeople()})});
+
+function viewPerson(id){
+  currentPersonId=id;const person=peopleCache.find(p=>p.id===id);if(!person)return;
+  const dates=getPersonDates(id),gifts=getPersonGifts(id),bday=dates.find(d=>d.type==='birthday');
+  const age=bday?getAge(bday.date):null,nextAge=age!==null?age+1:null;
+  const av=person.photo?'<img src="'+person.photo+'" alt="'+person.name+'">':getInitials(person.name);
+  let h='<div class="profile-header"><div class="profile-avatar" onclick="uploadPhoto(\''+id+'\')">'+av+'</div><input type="file" id="photo-upload-'+id+'" accept="image/*" style="display:none" onchange="handlePhotoUpload(event,\''+id+'\')"><div class="profile-name">'+person.name+'</div>'+(age!==null?'<div class="profile-age">'+age+' years old (turning '+nextAge+')</div>':'')+'</div>';
+  h+='<div class="profile-actions"><button onclick="openEditPerson(\''+id+'\')">Edit Name</button><button onclick="deletePerson(\''+id+'\')" style="color:var(--danger)">Delete</button></div>';
+  h+='<div class="card-section"><div class="card-section-title">Dates <button onclick="openAddDate(\''+id+'\')">+ Add</button></div>';
+  if(!dates.length)h+='<p style="font-size:13px;color:var(--text-muted)">No dates added yet.</p>';
+  else dates.forEach(d=>{
+    const du=daysUntil(d.date),yc=getYearCount(d.date),det=d.type==='birthday'?formatDate(d.date)+' - in '+du+' days':formatDate(d.date)+' - '+getOrdinal(yc)+' year in '+du+' days';
+    h+='<div class="date-item"><div class="di-info"><div class="di-label">'+d.label+'</div><div class="di-date">'+det+(d.note?' - '+d.note:'')+'</div></div><div class="di-actions"><button onclick="removeDate(\''+d.id+'\',\''+id+'\')">&#215;</button></div></div>';
+    if(d.type==='anniversary'&&ANNIVERSARY_GIFTS[yc])h+='<div class="anni-suggestions"><div class="anni-suggest-label">Traditional '+getOrdinal(yc)+' anniversary gift</div><span class="suggestion-chip">'+ANNIVERSARY_GIFTS[yc]+'</span></div>'
+  });
+  h+='</div>';
+  h+='<div class="card-section"><div class="card-section-title">Interests & Hobbies</div><div class="tags-wrap">';
+  (person.interests||[]).forEach((tag,i)=>{h+='<span class="tag">'+tag+'<button class="remove-tag" onclick="removeInterest(\''+id+'\','+i+')">&#215;</button></span>'});
+  h+='</div><div class="tag-input-row"><input type="text" id="tag-input" placeholder="Add interest..." onkeydown="if(event.key===\'Enter\')addInterest(\''+id+'\')"><button onclick="addInterest(\''+id+'\')">Add</button></div></div>';
+  h+='<div class="card-section"><div class="card-section-title">Notes</div><textarea id="notes-field" placeholder="Sizes, preferences, dislikes..." onchange="saveNotes(\''+id+'\')">'+(person.notes||'')+'</textarea></div>';
+  h+='<div class="card-section"><div class="card-section-title">Gift History <button onclick="openAddGift(\''+id+'\')">+ Add</button></div>';
+  if(!gifts.length)h+='<p style="font-size:13px;color:var(--text-muted)">No gifts recorded yet.</p>';
+  else gifts.forEach(g=>{h+='<div class="gift-item"><div><div class="gi-name">'+g.name+'</div><div class="gi-detail">'+g.year+(g.occasion?' - '+g.occasion:'')+(g.note?' - '+g.note:'')+'</div></div><div class="gi-actions"><button onclick="removeGift(\''+g.id+'\',\''+id+'\')">&#215;</button></div></div>'});
+  h+='</div>';
+  const suggestions=getSuggestions(id);
+  h+='<div class="card-section"><div class="card-section-title">Gift Ideas</div><div class="suggestion-chips">'+suggestions.map(s=>'<span class="suggestion-chip">'+s+'</span>').join('')+'</div></div>';
+  document.getElementById('profile-content').innerHTML=h;switchScreen('profile');document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'))
+}
+document.getElementById('back-from-profile').addEventListener('click',()=>switchScreen('people'));
+
+function openModal(html){document.getElementById('modal-content').innerHTML=html;document.getElementById('modal-overlay').classList.add('active')}
+function closeModal(){document.getElementById('modal-overlay').classList.remove('active')}
+document.getElementById('modal-overlay').addEventListener('click',e=>{if(e.target===e.currentTarget)closeModal()});
+
+document.getElementById('fab-add').addEventListener('click',()=>{openModal('<h3>Add Person</h3><div class="form-group"><label>Name</label><input type="text" id="new-name" placeholder="Full name" autofocus></div><div class="form-group"><label>Birthday</label><input type="date" id="new-birthday"></div><button class="btn-primary" id="add-person-btn" onclick="addPerson()">Add Person</button>')});
+
+async function addPerson(){
+  const name=document.getElementById('new-name').value.trim(),bday=document.getElementById('new-birthday').value;
+  if(!name){toast('Please enter a name');return}document.getElementById('add-person-btn').disabled=true;
+  const{data:person,error}=await sb.from('people').insert({user_id:currentUser.id,name,photo:null,notes:'',interests:[]}).select().single();
+  if(error){toast('Error: '+error.message);document.getElementById('add-person-btn').disabled=false;return}peopleCache.push(person);
+  if(bday){const{data:dateRow,error:dErr}=await sb.from('dates').insert({person_id:person.id,user_id:currentUser.id,type:'birthday',label:'Birthday',date:bday,note:''}).select().single();if(!dErr&&dateRow)datesCache.push(dateRow)}
+  closeModal();toast(name+' added!');renderPeople()
+}
+
+function openEditPerson(id){const p=peopleCache.find(x=>x.id===id);if(!p)return;openModal('<h3>Edit Name</h3><div class="form-group"><label>Name</label><input type="text" id="edit-name" value="'+p.name+'"></div><button class="btn-primary" onclick="saveName(\''+id+'\')">Save</button>')}
+async function saveName(id){const name=document.getElementById('edit-name').value.trim();if(!name){toast('Name cannot be empty');return}const{error}=await sb.from('people').update({name}).eq('id',id);if(error){toast('Error: '+error.message);return}const p=peopleCache.find(x=>x.id===id);if(p)p.name=name;closeModal();toast('Name updated');viewPerson(id)}
+async function deletePerson(id){if(!confirm('Remove this person and all their data?'))return;const{error}=await sb.from('people').delete().eq('id',id);if(error){toast('Error: '+error.message);return}peopleCache=peopleCache.filter(p=>p.id!==id);datesCache=datesCache.filter(d=>d.person_id!==id);giftsCache=giftsCache.filter(g=>g.person_id!==id);toast('Person removed');switchScreen('people')}
+
+function openAddDate(pid){openModal('<h3>Add Date</h3><div class="form-group"><label>Type</label><select id="date-type" onchange="document.getElementById(\'custom-label-group\').style.display=this.value===\'custom\'?\'block\':\'none\'"><option value="birthday">Birthday</option><option value="anniversary">Wedding Anniversary</option><option value="custom">Custom</option></select></div><div class="form-group" id="custom-label-group" style="display:none"><label>Label</label><input type="text" id="date-custom-label" placeholder="e.g. Baptism, Gotcha Day"></div><div class="form-group"><label>Date</label><input type="date" id="date-value"></div><div class="form-group"><label>Note (optional)</label><input type="text" id="date-note" placeholder="Optional note"></div><button class="btn-primary" onclick="addDate(\''+pid+'\')">Add Date</button>')}
+
+async function addDate(pid){
+  const type=document.getElementById('date-type').value,date=document.getElementById('date-value').value,note=document.getElementById('date-note').value.trim();
+  if(!date){toast('Please select a date');return}
+  let label=type==='birthday'?'Birthday':type==='anniversary'?'Wedding Anniversary':document.getElementById('date-custom-label').value.trim();
+  if(type==='custom'&&!label){toast('Please enter a label');return}
+  if(type==='birthday'&&getPersonDates(pid).some(d=>d.type==='birthday')){toast('Birthday already exists. Remove it first.');return}
+  const{data,error}=await sb.from('dates').insert({person_id:pid,user_id:currentUser.id,type,label,date,note}).select().single();
+  if(error){toast('Error: '+error.message);return}datesCache.push(data);closeModal();toast('Date added');viewPerson(pid)
+}
+async function removeDate(dateId,pid){const{error}=await sb.from('dates').delete().eq('id',dateId);if(error){toast('Error: '+error.message);return}datesCache=datesCache.filter(d=>d.id!==dateId);viewPerson(pid);toast('Date removed')}
+
+async function addInterest(pid){
+  const input=document.getElementById('tag-input'),val=input.value.trim();if(!val)return;
+  const p=peopleCache.find(x=>x.id===pid);if(!p)return;
+  const updated=[...(p.interests||[]),val];
+  const{error}=await sb.from('people').update({interests:updated}).eq('id',pid);
+  if(error){toast('Error: '+error.message);return}p.interests=updated;input.value='';viewPerson(pid)
+}
+async function removeInterest(pid,idx){
+  const p=peopleCache.find(x=>x.id===pid);if(!p)return;
+  const updated=[...(p.interests||[])];updated.splice(idx,1);
+  const{error}=await sb.from('people').update({interests:updated}).eq('id',pid);
+  if(error){toast('Error: '+error.message);return}p.interests=updated;viewPerson(pid)
+}
+
+let notesTimeout;
+async function saveNotes(pid){clearTimeout(notesTimeout);const notes=document.getElementById('notes-field').value;notesTimeout=setTimeout(async()=>{const{error}=await sb.from('people').update({notes}).eq('id',pid);if(!error){const p=peopleCache.find(x=>x.id===pid);if(p)p.notes=notes}},800)}
+
+function openAddGift(pid){const yr=new Date().getFullYear();openModal('<h3>Add Gift</h3><div class="form-group"><label>Gift</label><input type="text" id="gift-name" placeholder="What did you give?" autofocus></div><div class="form-group"><label>Year</label><input type="number" id="gift-year" value="'+yr+'" min="1900" max="2100"></div><div class="form-group"><label>Occasion (optional)</label><input type="text" id="gift-occasion" placeholder="Birthday, Christmas, etc."></div><div class="form-group"><label>Note (optional)</label><input type="text" id="gift-note" placeholder="They loved it, etc."></div><button class="btn-primary" onclick="addGift(\''+pid+'\')">Add Gift</button>')}
+
+async function addGift(pid){
+  const name=document.getElementById('gift-name').value.trim(),year=parseInt(document.getElementById('gift-year').value),occasion=document.getElementById('gift-occasion').value.trim(),note=document.getElementById('gift-note').value.trim();
+  if(!name){toast('Please enter the gift name');return}
+  const{data,error}=await sb.from('gifts').insert({person_id:pid,user_id:currentUser.id,name,year,occasion,note}).select().single();
+  if(error){toast('Error: '+error.message);return}giftsCache.push(data);closeModal();toast('Gift added');viewPerson(pid)
+}
+async function removeGift(gid,pid){const{error}=await sb.from('gifts').delete().eq('id',gid);if(error){toast('Error: '+error.message);return}giftsCache=giftsCache.filter(g=>g.id!==gid);viewPerson(pid);toast('Gift removed')}
+
+function uploadPhoto(pid){document.getElementById('photo-upload-'+pid).click()}
+function handlePhotoUpload(e,pid){
+  const file=e.target.files[0];if(!file)return;const reader=new FileReader();
+  reader.onload=ev=>{const img=new Image();img.onload=async()=>{const canvas=document.createElement('canvas'),size=200;canvas.width=size;canvas.height=size;const ctx=canvas.getContext('2d'),min=Math.min(img.width,img.height);ctx.drawImage(img,(img.width-min)/2,(img.height-min)/2,min,min,0,0,size,size);const dataUrl=canvas.toDataURL('image/jpeg',0.7);const{error}=await sb.from('people').update({photo:dataUrl}).eq('id',pid);if(error){toast('Error saving photo');return}const p=peopleCache.find(x=>x.id===pid);if(p)p.photo=dataUrl;viewPerson(pid);toast('Photo updated')};img.src=ev.target.result};
+  reader.readAsDataURL(file)
+}
+
+function applyTheme(){const theme=localStorage.getItem('bb-theme')||'light';document.documentElement.setAttribute('data-theme',theme);document.getElementById('theme-toggle').classList.toggle('on',theme==='dark')}
+document.getElementById('theme-toggle').addEventListener('click',()=>{const c=document.documentElement.getAttribute('data-theme'),n=c==='dark'?'light':'dark';localStorage.setItem('bb-theme',n);applyTheme()});
+
+async function exportData(){
+  const obj={people:peopleCache,dates:datesCache,gifts:giftsCache,exportedAt:new Date().toISOString()};
+  const blob=new Blob([JSON.stringify(obj,null,2)],{type:'application/json'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='birthday-book-backup-'+new Date().toISOString().slice(0,10)+'.json';a.click();URL.revokeObjectURL(a.href);toast('Data exported!')
+}
+
+async function importData(e){
+  const file=e.target.files[0];if(!file)return;const text=await file.text();
+  try{
+    const imported=JSON.parse(text);if(!imported.people){toast('Invalid file format');return}
+    if(!confirm('This will ADD '+imported.people.length+' people. Continue?'))return;
+    for(const p of imported.people){
+      const{data:newP,error}=await sb.from('people').insert({user_id:currentUser.id,name:p.name,photo:p.photo||null,notes:p.notes||'',interests:p.interests||[]}).select().single();
+      if(error||!newP)continue;peopleCache.push(newP);
+      for(const d of(imported.dates||[]).filter(d=>d.person_id===p.id)){const{data:newD}=await sb.from('dates').insert({person_id:newP.id,user_id:currentUser.id,type:d.type,label:d.label,date:d.date,note:d.note||''}).select().single();if(newD)datesCache.push(newD)}
+      for(const g of(imported.gifts||[]).filter(g=>g.person_id===p.id)){const{data:newG}=await sb.from('gifts').insert({person_id:newP.id,user_id:currentUser.id,name:g.name,year:g.year,occasion:g.occasion||'',note:g.note||''}).select().single();if(newG)giftsCache.push(newG)}
+    }
+    toast('Data imported!');renderDashboard();renderPeople()
+  }catch(err){toast('Error reading file')}e.target.value=''
+}
+
+async function clearAllData(){
+  if(!confirm('Permanently delete ALL your data? This cannot be undone.'))return;
+  if(!confirm('Are you absolutely sure?'))return;
+  await sb.from('gifts').delete().eq('user_id',currentUser.id);
+  await sb.from('dates').delete().eq('user_id',currentUser.id);
+  await sb.from('people').delete().eq('user_id',currentUser.id);
+  peopleCache=[];datesCache=[];giftsCache=[];toast('All data deleted');renderDashboard();renderPeople()
+}
+
+applyTheme();checkSession()
+<\/script>
+</body>
+</html>
