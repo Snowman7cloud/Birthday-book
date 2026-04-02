@@ -191,16 +191,20 @@ async function handleAuth(){
     const result=authMode==='login'?await sb.auth.signInWithPassword({email,password}):await sb.auth.signUp({email,password});
     if(result.error){errEl.textContent=result.error.message;errEl.style.display='block';btn.disabled=false;btn.textContent=authMode==='login'?'Sign In':'Create Account';return}
     if(authMode==='signup'&&result.data.user&&!result.data.session){errEl.textContent='Check your email for a confirmation link, then sign in.';errEl.style.display='block';errEl.style.background='var(--accent2-soft)';errEl.style.color='var(--accent2)';btn.disabled=false;btn.textContent='Create Account';return}
-    currentUser=result.data.user;await loadAllData();showApp()
-  }catch(e){errEl.textContent='Connection error. Please try again.';errEl.style.display='block';btn.disabled=false;btn.textContent=authMode==='login'?'Sign In':'Create Account'}
+    currentUser=result.data.session?.user||result.data.user;
+    try{await loadAllData()}catch(le){console.error('Load error:',le)}
+    showApp()
+  }catch(e){console.error('Auth error:',e);errEl.textContent='Error: '+e.message;errEl.style.display='block';btn.disabled=false;btn.textContent=authMode==='login'?'Sign In':'Create Account'}
 }
 async function signOut(){await sb.auth.signOut();currentUser=null;peopleCache=[];datesCache=[];giftsCache=[];showAuth()}
 document.getElementById('auth-password').addEventListener('keydown',e=>{if(e.key==='Enter')handleAuth()});
 document.getElementById('auth-email').addEventListener('keydown',e=>{if(e.key==='Enter')document.getElementById('auth-password').focus()});
 
 async function loadAllData(){
-  const[pRes,dRes,gRes]=await Promise.all([sb.from('people').select('*').eq('user_id',currentUser.id).order('name'),sb.from('dates').select('*').eq('user_id',currentUser.id),sb.from('gifts').select('*').eq('user_id',currentUser.id)]);
-  peopleCache=pRes.data||[];datesCache=dRes.data||[];giftsCache=gRes.data||[]
+  try{
+    const[pRes,dRes,gRes]=await Promise.all([sb.from('people').select('*').eq('user_id',currentUser.id).order('name'),sb.from('dates').select('*').eq('user_id',currentUser.id),sb.from('gifts').select('*').eq('user_id',currentUser.id)]);
+    peopleCache=pRes.data||[];datesCache=dRes.data||[];giftsCache=gRes.data||[]
+  }catch(e){console.error('loadAllData error:',e);peopleCache=[];datesCache=[];giftsCache=[]}
 }
 function getPersonDates(pid){return datesCache.filter(d=>d.person_id===pid)}
 function getPersonGifts(pid){return giftsCache.filter(g=>g.person_id===pid)}
