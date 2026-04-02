@@ -173,9 +173,10 @@ body{font-family:var(--font-body);background:var(--bg);color:var(--text);min-hei
 <script>
 const SUPABASE_URL='https://nfhbrfynldtxymistidb.supabase.co';
 const SUPABASE_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5maGJyZnlubGR0eHltaXN0aWRiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUwODUwNzMsImV4cCI6MjA5MDY2MTA3M30.KNj_exYPGW2ktRpc8O6aMXgvzbWaMG-GB0fH0kevEHU';
-const sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
+const sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
 let currentUser=null,peopleCache=[],datesCache=[],giftsCache=[],currentSort='name',currentPersonId=null,authMode='login';
 
+sb.auth.onAuthStateChange(async(event,session)=>{if(session?.user){currentUser=session.user;await loadAllData();showApp()}else if(event==='SIGNED_OUT'){currentUser=null;peopleCache=[];datesCache=[];giftsCache=[];showAuth()}});
 async function checkSession(){try{const{data:{session}}=await sb.auth.getSession();if(session){currentUser=session.user;await loadAllData();showApp()}else showAuth()}catch(e){showAuth()}}
 function showAuth(){document.getElementById('loading-overlay').classList.add('hidden');document.getElementById('auth-screen').style.display='flex';document.getElementById('app-container').style.display='none'}
 function showApp(){document.getElementById('loading-overlay').classList.add('hidden');document.getElementById('auth-screen').style.display='none';document.getElementById('app-container').style.display='block';renderDashboard();document.getElementById('fab-add').style.display='none'}
